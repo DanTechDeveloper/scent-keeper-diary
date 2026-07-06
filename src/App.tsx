@@ -1,4 +1,3 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toaster } from "@/components/ui/sonner";
@@ -6,11 +5,7 @@ import CollectionTab from "@/components/sotd/CollectionTab";
 import TodayTab from "@/components/sotd/TodayTab";
 import JournalTab from "@/components/sotd/JournalTab";
 
-export const Route = createFileRoute("/")({
-  component: Index,
-});
-
-function Index() {
+export default function App() {
   const [tab, setTab] = useState("today");
   return (
     <div className="min-h-screen bg-background">
