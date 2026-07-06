@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Plus, Pencil, Trash2, Globe } from "lucide-react";
 import { toast } from "sonner";
 import {
-  type Fragrance, getFragrances, saveFragrances, uid,
+  type Fragrance, getFragrances, saveFragrances, findFragranceDuplicate, uid,
 } from "@/lib/sotd-storage";
 import { scrapeFromUrl } from "@/lib/scraper";
 
@@ -90,10 +90,16 @@ export default function CollectionTab() {
       return;
     }
     const payload = { name: form.name, brand: form.brand, notes: form.notes };
+
     if (editing) {
       persist(list.map((f) => (f.id === editing.id ? { ...f, ...payload } : f)));
       toast.success("Fragrance updated");
     } else {
+      const dup = findFragranceDuplicate(form.name, form.brand);
+      if (dup) {
+        toast.error(`"${form.name}" already exists in your collection`);
+        return;
+      }
       persist([
         { id: uid(), createdAt: new Date().toISOString(), ...payload },
         ...list,

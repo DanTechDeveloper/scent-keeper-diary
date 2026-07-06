@@ -65,6 +65,21 @@ export const todayISO = () => {
 export const getFragrances = () => read<Fragrance[]>(K.fragrances, []);
 export const saveFragrances = (list: Fragrance[]) => write(K.fragrances, list);
 
+export const findFragranceDuplicate = (
+  name: string,
+  brand: string | undefined,
+  excludeId?: string,
+): Fragrance | undefined => {
+  const list = getFragrances();
+  const q = name.toLowerCase();
+  return list.find(
+    (f) =>
+      f.id !== excludeId &&
+      f.name.toLowerCase() === q &&
+      (f.brand ?? "").toLowerCase() === (brand ?? "").toLowerCase(),
+  );
+};
+
 // Today
 export const getToday = (): TodayState | null => {
   const t = read<TodayState | null>(K.today, null);
