@@ -365,6 +365,9 @@ export default function TodayTab() {
               <p className="text-xs text-muted-foreground pt-2 border-t">
                 Saved at {fmtTime(existingEntry.createdAt)}
               </p>
+              <p className="text-[11px] text-muted-foreground/60 text-center pt-2">
+                Next roll available tomorrow
+              </p>
             </div>
           ) : (
             <div className="space-y-4">
