@@ -1,24 +1,54 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Toaster } from "@/components/ui/sonner";
+import CollectionTab from "@/components/sotd/CollectionTab";
+import TodayTab from "@/components/sotd/TodayTab";
+import JournalTab from "@/components/sotd/JournalTab";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
 function Index() {
+  const [tab, setTab] = useState("today");
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border/60">
+        <div className="mx-auto max-w-5xl px-6 py-8 flex flex-col items-center text-center">
+          <p className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground">
+            A daily fragrance ritual
+          </p>
+          <h1 className="font-serif text-5xl md:text-6xl mt-2 text-foreground">
+            Scent<span className="text-gold">of</span>theDay
+          </h1>
+          <div className="mt-3 h-px w-16 bg-gold/60" />
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-5xl px-6 py-10">
+        <Tabs value={tab} onValueChange={setTab} className="w-full">
+          <TabsList className="mx-auto grid grid-cols-3 w-full max-w-md bg-secondary">
+            <TabsTrigger value="today">Today</TabsTrigger>
+            <TabsTrigger value="collection">Collection</TabsTrigger>
+            <TabsTrigger value="journal">Journal</TabsTrigger>
+          </TabsList>
+          <TabsContent value="today" className="mt-8">
+            <TodayTab />
+          </TabsContent>
+          <TabsContent value="collection" className="mt-8">
+            <CollectionTab />
+          </TabsContent>
+          <TabsContent value="journal" className="mt-8">
+            <JournalTab />
+          </TabsContent>
+        </Tabs>
+      </main>
+
+      <footer className="mx-auto max-w-5xl px-6 py-10 text-center text-xs text-muted-foreground">
+        Accept the fate. Wear it well.
+      </footer>
+      <Toaster />
     </div>
   );
 }
