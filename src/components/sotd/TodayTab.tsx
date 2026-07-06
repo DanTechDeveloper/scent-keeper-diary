@@ -68,6 +68,12 @@ export default function TodayTab() {
     setOccasions(getOccasions());
   }, []);
 
+  // Re-check on day rollover
+  useEffect(() => {
+    const today = getToday();
+    if (state && !today) setState(null);
+  }, [tick]);
+
   const picks = state
     ? state.pickIds.map((id) => collection.find((f) => f.id === id)).filter(Boolean) as Fragrance[]
     : [];

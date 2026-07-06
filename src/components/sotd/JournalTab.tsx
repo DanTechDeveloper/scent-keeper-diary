@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BookOpen } from "lucide-react";
@@ -16,7 +16,7 @@ export default function JournalTab() {
     setFrags(getFragrances());
   }, []);
 
-  const byId = useMemo(() => Object.fromEntries(frags.map((f) => [f.id, f])), [frags]);
+  const byId = Object.fromEntries(frags.map((f) => [f.id, f]));
 
   if (entries.length === 0) {
     return (
