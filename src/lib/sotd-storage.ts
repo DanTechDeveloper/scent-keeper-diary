@@ -12,6 +12,7 @@ export type TodayState = {
   layers: 1 | 2;
   pickIds: string[];
   rolledAt: string;
+  feedbackAt?: string; // ISO — when the journal unlocks
   timeIn?: string;
   journalId?: string;
 };

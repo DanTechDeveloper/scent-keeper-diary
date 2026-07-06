@@ -12,21 +12,25 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Globe } from "lucide-react";
 import { toast } from "sonner";
 import {
   type Fragrance, getFragrances, saveFragrances, uid,
 } from "@/lib/sotd-storage";
+import { scrapeFromUrl } from "@/lib/scraper";
 
 function emptyFrag(): Omit<Fragrance, "id" | "createdAt"> {
-  return { name: "", brand: "", house: "", notes: "" };
+  return { name: "", brand: "", notes: "" };
 }
 
 export default function CollectionTab() {
   const [list, setList] = useState<Fragrance[]>([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Fragrance | null>(null);
-  const [form, setForm] = useState(emptyFrag());
+  const [form, setForm] = useState<Omit<Fragrance, "id" | "createdAt">>(emptyFrag());
+  const [importUrl, setImportUrl] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importStatus, setImportStatus] = useState("");
 
   useEffect(() => setList(getFragrances()), []);
 
@@ -38,12 +42,39 @@ export default function CollectionTab() {
   const openAdd = () => {
     setEditing(null);
     setForm(emptyFrag());
+    setImportUrl("");
     setOpen(true);
   };
   const openEdit = (f: Fragrance) => {
     setEditing(f);
-    setForm({ name: f.name, brand: f.brand ?? "", house: f.house ?? "", notes: f.notes ?? "" });
+    setForm({ name: f.name, brand: f.brand ?? "", notes: f.notes ?? "" });
+    setImportUrl("");
     setOpen(true);
+  };
+
+  const importFromUrl = async () => {
+    if (!importUrl.trim()) {
+      toast.error("Paste a fragrance URL first");
+      return;
+    }
+    setImporting(true);
+    setImportStatus("Importing...");
+    try {
+      const data = await scrapeFromUrl(importUrl.trim());
+      setForm({
+        name: data.name || "",
+        brand: data.brand || "",
+        notes: data.notes || "",
+      });
+      setImportStatus("Imported!");
+      toast.success("Imported from URL");
+    } catch {
+      setImportStatus("Failed to import");
+      toast.error("Could not scrape that URL. Try a Fragrantica, Parfumo, or Basenotes link.");
+    } finally {
+      setImporting(false);
+      setTimeout(() => setImportStatus(""), 2000);
+    }
   };
 
   const save = () => {
@@ -51,12 +82,13 @@ export default function CollectionTab() {
       toast.error("Name is required");
       return;
     }
+    const payload = { name: form.name, brand: form.brand, notes: form.notes };
     if (editing) {
-      persist(list.map((f) => (f.id === editing.id ? { ...editing, ...form } : f)));
+      persist(list.map((f) => (f.id === editing.id ? { ...f, ...payload } : f)));
       toast.success("Fragrance updated");
     } else {
       persist([
-        { id: uid(), createdAt: new Date().toISOString(), ...form },
+        { id: uid(), createdAt: new Date().toISOString(), ...payload },
         ...list,
       ]);
       toast.success("Fragrance added");
@@ -90,6 +122,30 @@ export default function CollectionTab() {
                 {editing ? "Edit fragrance" : "New fragrance"}
               </DialogTitle>
             </DialogHeader>
+            <div className="space-y-3">
+              {!editing && (
+                <div>
+                  <div className="flex gap-2">
+                    <Input
+                      value={importUrl}
+                      onChange={(e) => setImportUrl(e.target.value)}
+                      placeholder="Paste Fragrantica / Parfumo URL..."
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="outline"
+                      onClick={importFromUrl}
+                      disabled={importing}
+                    >
+                      <Globe className={importing ? "animate-spin" : ""} />
+                      {importing ? "..." : "Import"}
+                    </Button>
+                  </div>
+                  {importStatus && (
+                    <p className="text-xs text-muted-foreground mt-1">{importStatus}</p>
+                  )}
+                </div>
+              )}
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Name *</Label>
@@ -99,33 +155,24 @@ export default function CollectionTab() {
                   placeholder="Sauvage Elixir"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label>Brand</Label>
-                  <Input
-                    value={form.brand}
-                    onChange={(e) => setForm({ ...form, brand: e.target.value })}
-                    placeholder="Dior"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>House</Label>
-                  <Input
-                    value={form.house}
-                    onChange={(e) => setForm({ ...form, house: e.target.value })}
-                    placeholder="Designer / Niche"
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label>Brand</Label>
+                <Input
+                  value={form.brand}
+                  onChange={(e) => setForm({ ...form, brand: e.target.value })}
+                  placeholder="Dior"
+                />
               </div>
               <div className="space-y-2">
                 <Label>Notes</Label>
                 <Textarea
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  placeholder="Top: bergamot, lavender · Heart: cinnamon · Base: amber"
+                  placeholder="Top notes, heart notes, base notes..."
                   rows={3}
                 />
               </div>
+            </div>
             </div>
             <DialogFooter>
               <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
@@ -155,7 +202,7 @@ export default function CollectionTab() {
                 <div className="min-w-0">
                   <h3 className="font-serif text-2xl leading-tight truncate">{f.name}</h3>
                   <p className="text-sm text-muted-foreground">
-                    {f.brand || "—"}{f.house ? ` · ${f.house}` : ""}
+                    {f.brand || "—"}
                   </p>
                 </div>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Dices, Clock, Lock, Sparkles } from "lucide-react";
+import { Dices, Clock, Lock, Sparkles, Timer, Hourglass } from "lucide-react";
 import { toast } from "sonner";
 import {
   getFragrances, getToday, setToday, todayISO, uid,
@@ -15,24 +15,40 @@ import StarRating from "./StarRating";
 import OccasionCombobox from "./OccasionCombobox";
 
 function useTick() {
-  const [, set] = useState(0);
+  const [tick, set] = useState(0);
   useEffect(() => {
     const t = setInterval(() => set((n) => n + 1), 1000);
     return () => clearInterval(t);
   }, []);
+  return tick;
 }
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
+    timeZone: "Asia/Manila",
   });
 }
 function fmtTime(iso: string) {
-  return new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString(undefined, {
+    hour: "2-digit", minute: "2-digit",
+    timeZone: "Asia/Manila",
+  });
+}
+function phComponents(date?: Date): { year: number; month: number; day: number; hour: number; minute: number } {
+  const d = date ?? new Date();
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  }).formatToParts(d);
+  const m: Record<string, number> = {};
+  for (const p of parts) if (p.type !== "literal") m[p.type] = parseInt(p.value, 10);
+  return { year: m.year, month: m.month, day: m.day, hour: m.hour, minute: m.minute };
 }
 
 export default function TodayTab() {
-  useTick();
+  const tick = useTick();
   const [collection, setCollection] = useState<Fragrance[]>([]);
   const [state, setState] = useState<TodayState | null>(null);
   const [layers, setLayers] = useState<1 | 2>(1);
@@ -59,8 +75,8 @@ export default function TodayTab() {
       .filter(Boolean) as Fragrance[];
   }, [state, collection]);
 
-  const [now, setNow] = useState<Date | null>(null);
-  useEffect(() => { setNow(new Date()); }, []);
+  const now = useMemo(() => new Date(), [tick]);
+  const [deadlineTime, setDeadlineTime] = useState("12:00");
 
   const roll = () => {
     if (collection.length < layers) {
@@ -94,13 +110,43 @@ export default function TodayTab() {
     }, 80);
   };
 
+  const feedbackUnlocked = state?.feedbackAt ? new Date(state.feedbackAt) <= now : false;
+
   const clockIn = () => {
     if (!state) return;
     const next: TodayState = { ...state, timeIn: new Date().toISOString() };
     setState(next);
     setToday(next);
-    toast.success("Clocked in. The journal is unlocked.");
+    toast.success("Clocked in! Now set your feedback deadline.");
   };
+
+  const setDeadline = () => {
+    if (!state) return;
+    const [dh, dm] = deadlineTime.split(":").map(Number);
+    const ph = phComponents();
+    let day = ph.day;
+    if (dh < ph.hour || (dh === ph.hour && dm <= ph.minute)) day += 1;
+    const phOffset = 8 * 60 * 60 * 1000;
+    const deadline = new Date(Date.UTC(ph.year, ph.month - 1, day, dh, dm, 0) - phOffset);
+    if (deadline <= now) {
+      toast.error("Deadline must be in the future.");
+      return;
+    }
+    const next: TodayState = { ...state, feedbackAt: deadline.toISOString() };
+    setState(next);
+    setToday(next);
+    toast.success(`Feedback unlocks at ${fmtTime(deadline.toISOString())}`);
+  };
+
+  const countdown = useMemo(() => {
+    if (!state?.feedbackAt || feedbackUnlocked) return "";
+    const ms = new Date(state.feedbackAt).getTime() - Date.now();
+    if (ms <= 0) return "";
+    const h = Math.floor(ms / 3600000);
+    const m = Math.floor((ms % 3600000) / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    return `${h}h ${m}m ${s}s`;
+  }, [state?.feedbackAt, now, feedbackUnlocked]);
 
   const existingEntry = useMemo(() => {
     if (!state?.journalId) return null;
@@ -145,12 +191,12 @@ export default function TodayTab() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">Today</p>
-            <p className="font-serif text-3xl mt-1">{now ? fmtDate(now.toISOString()) : ""}</p>
+            <p className="font-serif text-3xl mt-1">{fmtDate(now.toISOString())}</p>
           </div>
           <div className="text-right">
             <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">Now</p>
             <p className="font-serif text-3xl mt-1 tabular-nums">
-              {now ? now.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : ""}
+              {now.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Asia/Manila" })}
             </p>
           </div>
         </div>
@@ -243,35 +289,62 @@ export default function TodayTab() {
         </Card>
       )}
 
-      {/* Clock in */}
-      {state && (
+      {/* Time in */}
+      {state && !state.timeIn && (
         <Card className="p-6">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <Clock className="size-4 text-gold" />
-                <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">Time in</p>
-              </div>
-              <p className="font-serif text-2xl mt-1">
-                {state.timeIn ? fmtTime(state.timeIn) : "Not clocked in yet"}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {state.timeIn
-                  ? "Journal unlocked. Come back later to write."
-                  : "Spray on. Clock in to unlock the journal."}
-              </p>
-            </div>
-            {!state.timeIn && (
-              <Button onClick={clockIn} className="bg-primary">
-                <Clock /> Clock in
+          <div className="text-center">
+            <Hourglass className="mx-auto size-8 text-gold" />
+            <h3 className="font-serif text-xl mt-3">Time in</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Spray on and clock in to start.
+            </p>
+            <Button onClick={clockIn} className="mt-4 bg-primary" size="lg">
+              <Clock /> Clock in now
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Set deadline */}
+      {state?.timeIn && !state.feedbackAt && (
+        <Card className="p-6">
+          <div className="text-center">
+            <Timer className="mx-auto size-8 text-gold" />
+            <h3 className="font-serif text-xl mt-3">Set feedback deadline</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Picked at {fmtTime(state.timeIn)}. When should feedback unlock?
+            </p>
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <input
+                type="time"
+                value={deadlineTime}
+                onChange={(e) => setDeadlineTime(e.target.value)}
+                className="bg-background border border-gold/30 rounded-lg px-4 py-2 text-lg font-mono"
+              />
+              <Button onClick={setDeadline} className="bg-gold">
+                Set
               </Button>
-            )}
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Countdown */}
+      {state?.feedbackAt && !feedbackUnlocked && (
+        <Card className="p-6 border-gold/40">
+          <div className="text-center">
+            <Timer className="mx-auto size-8 text-gold animate-pulse" />
+            <h3 className="font-serif text-xl mt-3">Wearing time</h3>
+            <p className="text-3xl font-mono tabular-nums mt-2 text-gold">{countdown}</p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Feedback unlocks at {fmtTime(state.feedbackAt)}
+            </p>
           </div>
         </Card>
       )}
 
       {/* Journal */}
-      {state?.timeIn && (
+      {feedbackUnlocked && (
         <Card className="p-6">
           <div className="flex items-center gap-2 mb-4">
             <Sparkles className="size-4 text-gold" />
