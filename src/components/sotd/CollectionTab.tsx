@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Search } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
@@ -31,6 +32,12 @@ export default function CollectionTab() {
   const [importUrl, setImportUrl] = useState("");
   const [importing, setImporting] = useState(false);
   const [importStatus, setImportStatus] = useState("");
+  const [search, setSearch] = useState("");
+
+  const q = search.toLowerCase();
+  const filtered = q
+    ? list.filter((f) => f.name.toLowerCase().includes(q) || f.brand?.toLowerCase().includes(q))
+    : list;
 
   useEffect(() => setList(getFragrances()), []);
 
@@ -103,19 +110,28 @@ export default function CollectionTab() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="font-serif text-3xl">Your Collection</h2>
           <p className="text-sm text-muted-foreground">
-            {list.length} {list.length === 1 ? "fragrance" : "fragrances"} in your wardrobe
+            {filtered.length}/{list.length} {list.length === 1 ? "fragrance" : "fragrances"}
           </p>
         </div>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search..."
+              className="pl-9 w-56"
+            />
+          </div>
+          <Button onClick={openAdd} className="bg-gold hover:opacity-90 shrink-0">
+            <Plus /> Add fragrance
+          </Button>
+        </div>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={openAdd} className="bg-gold hover:opacity-90">
-              <Plus /> Add fragrance
-            </Button>
-          </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle className="font-serif text-2xl">
@@ -194,9 +210,19 @@ export default function CollectionTab() {
             <Plus /> Add fragrance
           </Button>
         </Card>
+      ) : filtered.length === 0 ? (
+        <Card className="p-12 text-center border-dashed">
+          <p className="font-serif text-2xl mb-2">No fragrances match your search</p>
+          <p className="text-sm text-muted-foreground mb-6">
+            Try a different name or brand.
+          </p>
+          <Button variant="outline" onClick={() => setSearch("")}>
+            Clear search
+          </Button>
+        </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {list.map((f) => (
+          {filtered.map((f) => (
             <Card key={f.id} className="p-5 group hover:border-gold/60 transition">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">

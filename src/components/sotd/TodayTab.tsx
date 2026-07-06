@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -68,14 +68,11 @@ export default function TodayTab() {
     setOccasions(getOccasions());
   }, []);
 
-  const picks = useMemo(() => {
-    if (!state) return [];
-    return state.pickIds
-      .map((id) => collection.find((f) => f.id === id))
-      .filter(Boolean) as Fragrance[];
-  }, [state, collection]);
+  const picks = state
+    ? state.pickIds.map((id) => collection.find((f) => f.id === id)).filter(Boolean) as Fragrance[]
+    : [];
 
-  const now = useMemo(() => new Date(), [tick]);
+  const now = new Date();
   const [deadlineTime, setDeadlineTime] = useState("12:00");
 
   const roll = () => {
@@ -122,7 +119,7 @@ export default function TodayTab() {
 
   const setDeadline = () => {
     if (!state) return;
-    const [dh, dm] = deadlineTime.split(":").map(Number);
+    const [dh, dm] = deadlineTime.split(":").map(Number);useTick
     const ph = phComponents();
     let day = ph.day;
     if (dh < ph.hour || (dh === ph.hour && dm <= ph.minute)) day += 1;
@@ -138,7 +135,7 @@ export default function TodayTab() {
     toast.success(`Feedback unlocks at ${fmtTime(deadline.toISOString())}`);
   };
 
-  const countdown = useMemo(() => {
+  const countdown = (() => {
     if (!state?.feedbackAt || feedbackUnlocked) return "";
     const ms = new Date(state.feedbackAt).getTime() - Date.now();
     if (ms <= 0) return "";
@@ -146,12 +143,11 @@ export default function TodayTab() {
     const m = Math.floor((ms % 3600000) / 60000);
     const s = Math.floor((ms % 60000) / 1000);
     return `${h}h ${m}m ${s}s`;
-  }, [state?.feedbackAt, now, feedbackUnlocked]);
+  })();
 
-  const existingEntry = useMemo(() => {
-    if (!state?.journalId) return null;
-    return getJournal().find((j) => j.id === state.journalId) ?? null;
-  }, [state]);
+  const existingEntry = state?.journalId
+    ? getJournal().find((j) => j.id === state.journalId) ?? null
+    : null;
 
   const saveEntry = () => {
     if (!state) return;
