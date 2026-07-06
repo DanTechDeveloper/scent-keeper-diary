@@ -59,7 +59,8 @@ export default function TodayTab() {
       .filter(Boolean) as Fragrance[];
   }, [state, collection]);
 
-  const now = new Date();
+  const [now, setNow] = useState<Date | null>(null);
+  useEffect(() => { setNow(new Date()); }, []);
 
   const roll = () => {
     if (collection.length < layers) {
@@ -144,12 +145,12 @@ export default function TodayTab() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">Today</p>
-            <p className="font-serif text-3xl mt-1">{fmtDate(now.toISOString())}</p>
+            <p className="font-serif text-3xl mt-1">{now ? fmtDate(now.toISOString()) : ""}</p>
           </div>
           <div className="text-right">
             <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">Now</p>
             <p className="font-serif text-3xl mt-1 tabular-nums">
-              {now.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+              {now ? now.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : ""}
             </p>
           </div>
         </div>
